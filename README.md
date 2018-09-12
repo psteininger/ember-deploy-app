@@ -1,56 +1,91 @@
-# ember-deploy-app
+# Example Ember App for Deployment Automation (CI+CD)
 
-This README outlines the details of collaborating on this Ember application.
-A short introduction of this app could easily go here.
+This is a bare-bones Ember application, with only a handful of addons:
+```shell
+ember install ember-cli-deploy
+ember install ember-cli-deploy-s3-pack
+ember install ember-cli-deploy-cloudfront
+``` 
 
-## Prerequisites
+This app is used as a reference by the Terraform project: https://github.com/psteininger/ember-deploy-aws
 
-You will need the following things properly installed on your computer.
+## Configuration 
+There is one key difference from a vanilla Ember app with the 3 addons installed. the `config/deploy.js` has been altered 
+and largely simplified. It can be simplified more, but that would make the setup a bit too rigid. Here is the configuration 
 
-* [Git](https://git-scm.com/)
-* [Node.js](https://nodejs.org/) (with npm)
-* [Ember CLI](https://ember-cli.com/)
-* [Google Chrome](https://google.com/chrome/)
+```ecmascript 6
+module.exports = function(deployTarget) {
+  var ENV = {
+    //...
+  };
+  ENV.s3 = {};
+  ENV["s3-index"] = {
+    allowOverwrite: true
+  };
+  
+  ENV.cloudfront = {
+    accessKeyId: process.env.AWS_KEY,
+    secretAccessKey: process.env.AWS_SECRET,
+  };
 
-## Installation
+  if (deployTarget === 'staging') {
+    ENV.s3.accessKeyId = process.env.AWS_KEY;
+    ENV.s3.secretAccessKey = process.env.AWS_SECRET;
+    ENV.s3.bucket = process.env.ASSETS_STAGING_BUCKET;
+    ENV.s3.region = process.env.AWS_REGION;
+    ENV["s3-index"].accessKeyId = process.env.AWS_KEY;
+    ENV["s3-index"].secretAccessKey = process.env.AWS_SECRET;
+    ENV["s3-index"].bucket = process.env.INDEX_STAGING_BUCKET;
+    ENV["s3-index"].region = process.env.AWS_REGION;
+    ENV.cloudfront.distribution = process.env.CLOUDFRONT_DISTRIBUTION_ID_STAGING;
+  }
 
-* `git clone <repository-url>` this repository
-* `cd ember-deploy-app`
-* `npm install`
+  if (deployTarget === 'production') {
+    ENV.s3.accessKeyId = process.env.AWS_KEY;
+    ENV.s3.secretAccessKey = process.env.AWS_SECRET;
+    ENV.s3.bucket = process.env.ASSETS_PRODUCTION_BUCKET;
+    ENV.s3.region = process.env.AWS_REGION;
+    ENV["s3-index"].accessKeyId = process.env.AWS_KEY;
+    ENV["s3-index"].secretAccessKey = process.env.AWS_SECRET;
+    ENV["s3-index"].bucket = process.env.INDEX_PRODUCTION_BUCKET;
+    ENV["s3-index"].region = process.env.AWS_REGION;
+    ENV.cloudfront.distribution = process.env.CLOUDFRONT_DISTRIBUTION_ID_PRODUCTION;
+  }
+  //...
+};
+```
+## Buildspec file
+The root directory contains a `buildspec.yml` to be used by AWS CodeBuild. This file can be modified and enhanced, but 
+for brevity, it includes only a deployment script.
 
-## Running / Development
+```yaml
+version: 0.2
 
-* `ember serve`
-* Visit your app at [http://localhost:4200](http://localhost:4200).
-* Visit your tests at [http://localhost:4200/tests](http://localhost:4200/tests).
+phases:
+  install:
+    commands:
+      - printenv
+      - npm install -g ember-cli@3.3.0
+      - npm install
+  build:
+    commands:
+      - ember deploy $EMBER_CLI_DEPLOY_TARGET
+```
 
-### Code Generators
 
-Make use of the many generators for code, try `ember help generate` for more details
+##Resources
+* Blog
+	* https://medium.com/@piotr.steininger/
+* Terraform Repo
+	* https://github.com/psteininger/ember-deploy-aws
+* Example App
+	* https://github.com/psteininger/ember-deploy-app
+* Terraform Docs
+	* https://www.terraform.io/docs/index.html
+* AWS Docs
+	* https://aws.amazon.com/documentation/
+* AWS Help in Berlin
+	* Renato Losio - http://arsenio.it
 
-### Running Tests
-
-* `ember test`
-* `ember test --server`
-
-### Linting
-
-* `npm run lint:js`
-* `npm run lint:js -- --fix`
-
-### Building
-
-* `ember build` (development)
-* `ember build --environment production` (production)
-
-### Deploying
-
-Specify what it takes to deploy your app.
-
-## Further Reading / Useful Links
-
-* [ember.js](https://emberjs.com/)
-* [ember-cli](https://ember-cli.com/)
-* Development Browser Extensions
-  * [ember inspector for chrome](https://chrome.google.com/webstore/detail/ember-inspector/bmdblncegkenkacieihfhpjfppoconhi)
-  * [ember inspector for firefox](https://addons.mozilla.org/en-US/firefox/addon/ember-inspector/)
+##License
+The code in this repo is distributed under MIT License
